@@ -1,104 +1,15 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { ModelLoader } from './modelLoader.js';
 import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 
-// 创建房屋结构
-function createHouse(scene) {
-    // 地板
-    const floorGeometry = new THREE.PlaneGeometry(30, 20);
-    const floorMaterial = new THREE.MeshStandardMaterial({
-        color: 0x8B4513,
-        roughness: 0.8
-    });
-    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-    floor.rotation.x = -Math.PI / 2;
-    scene.add(floor);
 
-    // 墙壁材质
-    const wallMaterial = new THREE.MeshStandardMaterial({
-        color: 0xF5DEB3,
-        side: THREE.DoubleSide
-    });
 
-    // 创建墙壁函数
-    function createWall(width, height, depth, x, y, z, rotationY = 0) {
-        const geometry = new THREE.BoxGeometry(width, height, depth);
-        const wall = new THREE.Mesh(geometry, wallMaterial);
-        wall.position.set(x, y, z);
-        wall.rotation.y = rotationY;
-        return wall;
-    }
-
-    // 添加四面墙
-    scene.add(createWall(30, 8, 0.2, 0, 4, -10)); // 后墙
-    scene.add(createWall(30, 8, 0.2, 0, 4, 10));  // 前墙
-    scene.add(createWall(20, 8, 0.2, -15, 4, 0, Math.PI / 2)); // 左墙
-    scene.add(createWall(20, 8, 0.2, 15, 4, 0, Math.PI / 2));  // 右墙
-
-    // 添加房间隔断
-    scene.add(createWall(20, 8, 0.2, 0, 4, -5)); // 客厅卧室隔断
-    scene.add(createWall(10, 8, 0.2, -7.5, 4, 5, Math.PI / 2)); // 厨房隔断
-
-    // 添加门
-    const doorGeometry = new THREE.BoxGeometry(2, 5, 0.2);
-    const doorMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
-    const door = new THREE.Mesh(doorGeometry, doorMaterial);
-    door.position.set(0, 2.5, 10);
-    scene.add(door);
-
-    // 添加窗户
-    const windowGeometry = new THREE.BoxGeometry(4, 3, 0.1);
-    const windowMaterial = new THREE.MeshStandardMaterial({
-        color: 0xADD8E6,
-        transparent: true,
-        opacity: 0.7
-    });
-    const window1 = new THREE.Mesh(windowGeometry, windowMaterial);
-    window1.position.set(-12, 5, 10);
-    scene.add(window1);
-    
-    const window2 = new THREE.Mesh(windowGeometry, windowMaterial);
-    window2.position.set(12, 5, 10);
-    scene.add(window2);
-}
-
-// 创建家具
-function createFurniture(scene) {
-    // 床
-    const bedGeometry = new THREE.BoxGeometry(6, 1, 4);
-    const bedMaterial = new THREE.MeshStandardMaterial({ color: 0x4169E1 });
-    const bed = new THREE.Mesh(bedGeometry, bedMaterial);
-    bed.position.set(-10, 0.5, -7);
-    scene.add(bed);
-
-    // 沙发
-    const sofaGeometry = new THREE.BoxGeometry(5, 1, 2);
-    const sofaMaterial = new THREE.MeshStandardMaterial({ color: 0xA0522D });
-    const sofa = new THREE.Mesh(sofaGeometry, sofaMaterial);
-    sofa.position.set(8, 0.5, -7);
-    scene.add(sofa);
-
-    // 餐桌
-    const tableGeometry = new THREE.BoxGeometry(3, 1, 2);
-    const tableMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
-    const table = new THREE.Mesh(tableGeometry, tableMaterial);
-    table.position.set(-5, 0.5, 7);
-    scene.add(table);
-
-    // 椅子
-    const chairGeometry = new THREE.BoxGeometry(1, 1, 1);
-    const chairMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
-    for (let i = 0; i < 4; i++) {
-        const chair = new THREE.Mesh(chairGeometry, chairMaterial);
-        chair.position.set(
-            -5 + (i < 2 ? -1 : 1) * 1.5,
-            0.5,
-            7 + (i % 2 === 0 ? -1.5 : 1.5)
-        );
-        scene.add(chair);
-    }
+// 空函数，保留结构
+function createInfoObjects(scene) {
+    return new Map();
 }
 
 // 创建老人模型
@@ -151,48 +62,8 @@ function createElderlyPerson() {
     return group;
 }
 
-// 创建传感器模型
-function createSensorModel(scene, sensorData) {
-    // 🔁 传感器相关变量
-    const sensorGroup = new THREE.Group();
-    scene.add(sensorGroup);
-    const sensorMap = new Map();
 
-    for (const sensor of sensorData) {
-        const marker = createSensorMarker(sensor.type);
-
-        // 设置传感器位置
-        marker.position.set(sensor.position.x, sensor.position.y, sensor.position.z);
-
-        // 给每个 marker 添加透明交互 box，扩大点击范围
-        const hitbox = new THREE.Mesh(
-            new THREE.BoxGeometry(0.5, 0.5, 0.5),
-            new THREE.MeshBasicMaterial({ color: 0x00ff00, opacity: 0, transparent: true })
-        );
-        hitbox.userData = sensor;
-        marker.add(hitbox);
-
-        // 加入分组、建立映射
-        sensorGroup.add(marker);
-        sensorMap.set(hitbox, sensor); // 将 hitbox 与 sensor 数据关联
-    }
-
-    return { sensorGroup, sensorMap };
-}
-
-// ✅ 创建 marker 函数（不同类型可用不同颜色/图标）
-function createSensorMarker(type) {
-    const geometry = new THREE.SphereGeometry(0.2, 16, 16); // 增大传感器尺寸
-    const colorMap = {
-        smoke: 0xff0000,
-        gas: 0xffff00,
-        water: 0x0000ff
-    };
-    const material = new THREE.MeshBasicMaterial({ color: colorMap[type] || 0xffffff });
-    return new THREE.Mesh(geometry, material);
-}
-
-export function createScene(canvas) {
+export async function createScene(canvas) {
     // 初始化场景
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xf0f0f0);
@@ -224,41 +95,44 @@ export function createScene(canvas) {
     controls.maxDistance = 50;
 
     // 添加光源（不启用阴影）
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+    // 添加环境光和方向光
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2); // 增强环境光
     scene.add(ambientLight);
-
+    
+    // 添加顶部平面方向光
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); // 增强方向光
+    directionalLight.position.set(0, 15, 0); // 提高光源位置
+    directionalLight.castShadow = false; // 关闭阴影
+    directionalLight.shadow.mapSize.width = 2048; // 提高阴影质量
+    directionalLight.shadow.mapSize.height = 2048;
+    scene.add(directionalLight);
+    
+    // 添加辅助光源
+    const helperLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    helperLight.position.set(5, 5, 5);
+    scene.add(helperLight);
+    
     // 创建房屋和家具
-    createHouse(scene);
-    createFurniture(scene);
+    // 加载房屋gltf模型
+    try {
+        const houseModel = await new ModelLoader().loadModel('house');
+        scene.add(houseModel);
+    } catch (error) {
+        console.error('加载房屋模型失败:', error);
+        console.log('请将house.glb模型文件放入public/models目录');
+    }
+    // 不再创建家具
 
     // 添加老人模型
     const elderlyPerson = createElderlyPerson();
     scene.add(elderlyPerson);
 
-    // 传感器数据定义
-    const sensorData = [
-        {
-            id: "sensor_01",
-            name: "厨房烟雾传感器",
-            position: { x: 1.2, y: 2.1, z: -0.5 },
-            type: "smoke"
-        },
-        {
-            id: "sensor_02",
-            name: "卧室燃气传感器",
-            position: { x: -8, y: 2, z: -5 },
-            type: "gas"
-        },
-        {
-            id: "sensor_03",
-            name: "浴室水浸传感器",
-            position: { x: 6, y: 1, z: 5 },
-            type: "water"
-        }
-    ];
-
-    // 创建传感器模型
-    const { sensorGroup, sensorMap } = createSensorModel(scene, sensorData);
+    // 创建统一信息对象映射表
+    const infoMap = createInfoObjects(scene);
+    
+    // 创建空传感器组(仅保留分组功能)
+    const sensorGroup = new THREE.Group();
+    scene.add(sensorGroup);
 
     // 创建信息面板
     const infoPanel = document.createElement('div');
@@ -269,7 +143,7 @@ export function createScene(canvas) {
     infoPanel.style.visibility = 'hidden';
     document.body.appendChild(infoPanel);
 
-    // ✅ 鼠标悬停事件处理
+    // 简化鼠标悬停事件处理
     function onDocumentMouseMove(event) {
         const rect = canvas.getBoundingClientRect();
         const mouse = new THREE.Vector2();
@@ -278,33 +152,30 @@ export function createScene(canvas) {
 
         const raycaster = new THREE.Raycaster();
         raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObjects(sensorGroup.children, true); // 启用递归 true
+        
+        // 仅检测场景中的模型
+        const intersects = raycaster.intersectObjects(scene.children, true);
 
         if (intersects.length > 0) {
             const intersected = intersects[0].object;
-
-            // 查找 sensor 数据
-            const sensor = sensorMap.get(intersected);
-            if (sensor) {
-                showSensorInfo(sensor, intersects[0].point);
-            }
+            console.log('检测到模型对象:', {
+                name: intersected.name,
+                type: intersected.type,
+                position: intersected.position
+            });
+            
+            // 显示基础信息
+            infoPanel.innerHTML = `📍 ${intersected.name || '未知对象'}<br>类型: ${intersected.type}`;
+            infoPanel.style.visibility = 'visible';
+            infoPanel.style.left = `${event.clientX + 10}px`;
+            infoPanel.style.top = `${event.clientY - 20}px`;
         } else {
-            hideSensorInfo();
+            hideObjectInfo();
         }
     }
 
-    // ✅ 展示传感器信息
-    function showSensorInfo(sensor, position) {
-        console.log("悬停在传感器：", sensor.name, "坐标：", position);
-
-        infoPanel.innerHTML = `📍 ${sensor.name}<br>类型：${sensor.type}`;
-        infoPanel.style.visibility = 'visible';
-        infoPanel.style.left = `${event.clientX + 10}px`;
-        infoPanel.style.top = `${event.clientY - 20}px`;
-    }
-
-    // ✅ 隐藏信息
-    function hideSensorInfo() {
+    // 隐藏信息
+    function hideObjectInfo() {
         infoPanel.style.visibility = 'hidden';
     }
 

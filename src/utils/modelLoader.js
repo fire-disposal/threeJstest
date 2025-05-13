@@ -1,6 +1,5 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader'
 
 // 模型配置
 const modelConfig = {
@@ -18,8 +17,13 @@ const modelConfig = {
       scale: 0.5
     },
     sensor_fall: {
-      modelPath: '/models/sensor_fall.glb', 
+      modelPath: '/models/sensor_fall.glb',
       scale: 0.7
+    },
+    house: {
+      modelPath: '/models/house.glb',  // 改用.glb格式
+      scale: 0.5,  // 缩小模型尺寸
+      position: { y: -1 }  // 降低模型高度
     }
   }
 }
@@ -31,10 +35,6 @@ export class ModelLoader {
   constructor() {
     this.loader = new GLTFLoader()
     
-    // 设置DRACO解码器
-    const dracoLoader = new DRACOLoader()
-    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/')
-    this.loader.setDRACOLoader(dracoLoader)
   }
 
   // 加载模型
@@ -63,11 +63,19 @@ export class ModelLoader {
       )
     })
   }
-
-  // 处理加载的模型
-  processModel(gltf, config) {
-    const model = gltf.scene
-    model.scale.set(config.scale, config.scale, config.scale)
+// 处理加载的模型
+processModel(gltf, config) {
+  const model = gltf.scene
+  model.scale.set(config.scale, config.scale, config.scale)
+  
+  // 打印模型结构信息
+  console.log('模型结构:')
+  model.traverse((child) => {
+    if (child.name) {
+      console.log(`- ${child.name} (${child.type})`)
+    }
+  })
+  
     
     // 处理动画
     if (config.animations && gltf.animations.length > 0) {
