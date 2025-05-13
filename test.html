@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数字孪生居家老年人监护系统</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+        }
+        #alert-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,0,0,0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+            font-size: 18px;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">数字孪生居家老年人监护系统<br>点击房间查看详情</div>
+    <div id="alert-panel"></div>
+    <div id="controls">
+        <button id="add-alert">模拟紧急情况</button>
+        <button id="reset-alert">清除警报</button>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        // 初始化场景、相机和渲染器
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0xf0f0f0);
+        document.body.appendChild(renderer.domElement);
+
+        // 添加轨道控制器
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        camera.position.set(10, 15, 20);
+        controls.update();
+
+        // 添加光源
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 20, 10);
+        scene.add(directionalLight);
+
+        // 创建房屋结构
+        function createHouse() {
+            // 地板
+            const floorGeometry = new THREE.PlaneGeometry(30, 20);
+            const floorMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x8B4513,
+                roughness: 0.8
+            });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // 墙壁
+            const wallMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xF5DEB3,
+                side: THREE.DoubleSide
+            });
+
+            // 创建墙壁函数
+            function createWall(width, height, depth, x, y, z, rotationY = 0) {
+                const geometry = new THREE.BoxGeometry(width, height, depth);
+                const wall = new THREE.Mesh(geometry, wallMaterial);
+                wall.position.set(x, y, z);
+                wall.rotation.y = rotationY;
+                wall.castShadow = true;
+                wall.receiveShadow = true;
+                return wall;
+            }
+
+            // 添加四面墙
+            scene.add(createWall(30, 8, 0.2, 0, 4, -10)); // 后墙
+            scene.add(createWall(30, 8, 0.2, 0, 4, 10));  // 前墙
+            scene.add(createWall(20, 8, 0.2, -15, 4, 0, Math.PI/2)); // 左墙
+            scene.add(createWall(20, 8, 0.2, 15, 4, 0, Math.PI/2));  // 右墙
+
+            // 添加房间隔断
+            scene.add(createWall(20, 8, 0.2, 0, 4, -5)); // 客厅卧室隔断
+            scene.add(createWall(10, 8, 0.2, -7.5, 4, 5, Math.PI/2)); // 厨房隔断
+
+            // 添加门
+            const doorGeometry = new THREE.BoxGeometry(2, 5, 0.2);
+            const doorMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+            const door = new THREE.Mesh(doorGeometry, doorMaterial);
+            door.position.set(0, 2.5, 10);
+            scene.add(door);
+
+            // 添加窗户
+            const windowGeometry = new THREE.BoxGeometry(4, 3, 0.1);
+            const windowMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xADD8E6,
+                transparent: true,
+                opacity: 0.7
+            });
+            const window1 = new THREE.Mesh(windowGeometry, windowMaterial);
+            window1.position.set(-12, 5, 10);
+            scene.add(window1);
+            
+            const window2 = new THREE.Mesh(windowGeometry, windowMaterial);
+            window2.position.set(12, 5, 10);
+            scene.add(window2);
+        }
+
+        // 创建家具
+        function createFurniture() {
+            // 床
+            const bedGeometry = new THREE.BoxGeometry(6, 1, 4);
+            const bedMaterial = new THREE.MeshStandardMaterial({ color: 0x4169E1 });
+            const bed = new THREE.Mesh(bedGeometry, bedMaterial);
+            bed.position.set(-10, 0.5, -7);
+            scene.add(bed);
+
+            // 沙发
+            const sofaGeometry = new THREE.BoxGeometry(5, 1, 2);
+            const sofaMaterial = new THREE.MeshStandardMaterial({ color: 0xA0522D });
+            const sofa = new THREE.Mesh(sofaGeometry, sofaMaterial);
+            sofa.position.set(8, 0.5, -7);
+            scene.add(sofa);
+
+            // 餐桌
+            const tableGeometry = new THREE.BoxGeometry(3, 1, 2);
+            const tableMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+            const table = new THREE.Mesh(tableGeometry, tableMaterial);
+            table.position.set(-5, 0.5, 7);
+            scene.add(table);
+
+            // 椅子
+            const chairGeometry = new THREE.BoxGeometry(1, 1, 1);
+            const chairMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+            for (let i = 0; i < 4; i++) {
+                const chair = new THREE.Mesh(chairGeometry, chairMaterial);
+                chair.position.set(
+                    -5 + (i < 2 ? -1 : 1) * 1.5,
+                    0.5,
+                    7 + (i % 2 === 0 ? -1.5 : 1.5)
+                );
+                scene.add(chair);
+            }
+        }
+
+        // 创建老人模型
+        function createElderlyPerson() {
+            const group = new THREE.Group();
+            
+            // 头部
+            const headGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+            const headMaterial = new THREE.MeshStandardMaterial({ color: 0xFFD700 });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 1.7;
+            group.add(head);
+            
+            // 身体
+            const bodyGeometry = new THREE.BoxGeometry(1, 1.5, 0.5);
+            const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x4682B4 });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 0.75;
+            group.add(body);
+            
+            // 四肢
+            const limbGeometry = new THREE.BoxGeometry(0.3, 0.8, 0.3);
+            const limbMaterial = new THREE.MeshStandardMaterial({ color: 0xFFD700 });
+            
+            // 左臂
+            const leftArm = new THREE.Mesh(limbGeometry, limbMaterial);
+            leftArm.position.set(-0.8, 1.1, 0);
+            leftArm.rotation.z = 0.3;
+            group.add(leftArm);
+            
+            // 右臂
+            const rightArm = new THREE.Mesh(limbGeometry, limbMaterial);
+            rightArm.position.set(0.8, 1.1, 0);
+            rightArm.rotation.z = -0.3;
+            group.add(rightArm);
+            
+            // 左腿
+            const leftLeg = new THREE.Mesh(limbGeometry, limbMaterial);
+            leftLeg.position.set(-0.3, -0.4, 0);
+            group.add(leftLeg);
+            
+            // 右腿
+            const rightLeg = new THREE.Mesh(limbGeometry, limbMaterial);
+            rightLeg.position.set(0.3, -0.4, 0);
+            group.add(rightLeg);
+            
+            group.position.set(0, 0, 0);
+            group.scale.set(0.8, 0.8, 0.8);
+            
+            return group;
+        }
+
+        // 创建传感器标记
+        function createSensorMarker(type, position) {
+            let color, size;
+            
+            switch(type) {
+                case 'motion':
+                    color = 0x00FF00;
+                    size = 0.5;
+                    break;
+                case 'fall':
+                    color = 0xFF0000;
+                    size = 0.7;
+                    break;
+                case 'medical':
+                    color = 0x0000FF;
+                    size = 0.6;
+                    break;
+                default:
+                    color = 0xFFFFFF;
+                    size = 0.5;
+            }
+            
+            const geometry = new THREE.SphereGeometry(size, 16, 16);
+            const material = new THREE.MeshStandardMaterial({ 
+                color: color,
+                emissive: color,
+                emissiveIntensity: 0.5
+            });
+            const marker = new THREE.Mesh(geometry, material);
+            marker.position.set(position.x, position.y, position.z);
+            
+            // 添加脉动动画
+            marker.userData.pulseSpeed = Math.random() * 0.02 + 0.01;
+            marker.userData.originalScale = size;
+            
+            return marker;
+        }
+
+        // 初始化场景对象
+        createHouse();
+        createFurniture();
+        
+        // 添加老人模型
+        const elderlyPerson = createElderlyPerson();
+        scene.add(elderlyPerson);
+        
+        // 添加传感器
+        const sensors = [
+            { type: 'motion', position: new THREE.Vector3(-10, 2, -7) },
+            { type: 'motion', position: new THREE.Vector3(8, 2, -7) },
+            { type: 'motion', position: new THREE.Vector3(-5, 2, 7) },
+            { type: 'fall', position: new THREE.Vector3(-10, 1, -7) },
+            { type: 'medical', position: new THREE.Vector3(0, 1, 0) }
+        ];
+        
+        sensors.forEach(sensor => {
+            const marker = createSensorMarker(sensor.type, sensor.position);
+            marker.userData.sensorType = sensor.type;
+            scene.add(marker);
+        });
+
+        // 射线检测用于点击交互
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        
+        function onMouseClick(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(scene.children, true);
+            
+            if (intersects.length > 0) {
+                const clickedObject = intersects[0].object;
+                
+                // 检查是否点击了传感器
+                if (clickedObject.userData.sensorType) {
+                    showAlert(`传感器触发: ${clickedObject.userData.sensorType === 'motion' ? '运动检测' : 
+                              clickedObject.userData.sensorType === 'fall' ? '跌倒警报' : '医疗警报'}`);
+                }
+                
+                // 检查是否点击了家具
+                if (clickedObject.parent === elderlyPerson) {
+                    showAlert("老人状态: 正常");
+                } else if (clickedObject.material && clickedObject.material.color) {
+                    console.log("点击了:", clickedObject);
+                }
+            }
+        }
+        
+        window.addEventListener('click', onMouseClick, false);
+
+        // 警报显示功能
+        function showAlert(message) {
+            const alertPanel = document.getElementById('alert-panel');
+            alertPanel.textContent = message;
+            alertPanel.style.display = 'block';
+            
+            // 3秒后自动隐藏
+            setTimeout(() => {
+                alertPanel.style.display = 'none';
+            }, 3000);
+        }
+
+        // 控制按钮事件
+        document.getElementById('add-alert').addEventListener('click', () => {
+            showAlert("紧急情况! 检测到老人跌倒!");
+            
+            // 找到跌倒传感器并使其闪烁红色
+            scene.children.forEach(obj => {
+                if (obj.userData.sensorType === 'fall') {
+                    obj.material.color.setHex(0xFF0000);
+                    obj.material.emissive.setHex(0xFF0000);
+                    obj.userData.alertActive = true;
+                }
+            });
+        });
+        
+        document.getElementById('reset-alert').addEventListener('click', () => {
+            // 重置所有传感器颜色
+            scene.children.forEach(obj => {
+                if (obj.userData.sensorType) {
+                    const color = obj.userData.sensorType === 'motion' ? 0x00FF00 :
+                                 obj.userData.sensorType === 'fall' ? 0xFF0000 : 0x0000FF;
+                    obj.material.color.setHex(color);
+                    obj.material.emissive.setHex(color);
+                    obj.userData.alertActive = false;
+                }
+            });
+        });
+
+        // 老人随机移动
+        function moveElderlyPerson() {
+            // 简单的随机移动模式
+            const time = Date.now() * 0.001;
+            
+            elderlyPerson.position.x = Math.sin(time * 0.3) * 8;
+            elderlyPerson.position.z = Math.cos(time * 0.2) * 6;
+            
+            // 面向移动方向
+            elderlyPerson.rotation.y = Math.atan2(
+                Math.sin(time * 0.3),
+                Math.cos(time * 0.2)
+            ) + Math.PI;
+            
+            // 模拟呼吸效果
+            const breath = Math.sin(time * 3) * 0.02;
+            elderlyPerson.scale.set(0.8 + breath, 0.8 + breath, 0.8 + breath);
+        }
+
+        // 传感器脉动动画
+        function animateSensors() {
+            const time = Date.now() * 0.001;
+            
+            scene.children.forEach(obj => {
+                if (obj.userData.sensorType) {
+                    const pulse = Math.sin(time * obj.userData.pulseSpeed * 10) * 0.1 + 1;
+                    const scale = obj.userData.originalScale * pulse;
+                    obj.scale.set(scale, scale, scale);
+                    
+                    // 如果是警报状态，闪烁红色
+                    if (obj.userData.alertActive) {
+                        const intensity = Math.sin(time * 5) * 0.5 + 0.5;
+                        obj.material.emissiveIntensity = intensity;
+                    }
+                }
+            });
+        }
+
+        // 动画循环
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            moveElderlyPerson();
+            animateSensors();
+            
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // 窗口大小调整
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
