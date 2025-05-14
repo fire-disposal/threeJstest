@@ -94,7 +94,7 @@ export async function createScene(canvas) {
     controls.minDistance = 5;
     controls.maxDistance = 50;
 
-    // 添加光源（不启用阴影）
+
     // 添加环境光和方向光
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.2); // 增强环境光
     scene.add(ambientLight);
@@ -102,7 +102,7 @@ export async function createScene(canvas) {
     // 添加顶部平面方向光
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); // 增强方向光
     directionalLight.position.set(0, 15, 0); // 提高光源位置
-    directionalLight.castShadow = false; // 关闭阴影
+    directionalLight.castShadow = true; // 关闭阴影
     directionalLight.shadow.mapSize.width = 2048; // 提高阴影质量
     directionalLight.shadow.mapSize.height = 2048;
     scene.add(directionalLight);
@@ -134,13 +134,21 @@ export async function createScene(canvas) {
     const sensorGroup = new THREE.Group();
     scene.add(sensorGroup);
 
-    // 创建信息面板
+    // 创建信息面板(Card样式)
     const infoPanel = document.createElement('div');
-    infoPanel.style.position = 'absolute';
-    infoPanel.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
-    infoPanel.style.border = '1px solid black';
-    infoPanel.style.padding = '5px';
+    infoPanel.style.position = 'fixed';
+    infoPanel.style.backgroundColor = 'white';
+    infoPanel.style.borderRadius = '8px';
+    infoPanel.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+    infoPanel.style.padding = '12px 16px';
+    infoPanel.style.maxWidth = '300px';
+    infoPanel.style.fontFamily = 'Arial, sans-serif';
+    infoPanel.style.fontSize = '14px';
+    infoPanel.style.color = '#333';
+    infoPanel.style.lineHeight = '1.5';
     infoPanel.style.visibility = 'hidden';
+    infoPanel.style.zIndex = '1000';
+    infoPanel.style.transition = 'opacity 0.2s ease';
     document.body.appendChild(infoPanel);
 
     // 简化鼠标悬停事件处理
@@ -158,14 +166,31 @@ export async function createScene(canvas) {
 
         if (intersects.length > 0) {
             const intersected = intersects[0].object;
+            // 查找完整组名路径
+            const groupPath = [];
+            let parent = intersected.parent;
+            while (parent) {
+                if (parent.isGroup && parent.name) {
+                    groupPath.unshift(parent.name); // 添加到数组开头
+                }
+                parent = parent.parent;
+            }
+            const fullGroupPath = groupPath.length > 0
+                ? groupPath.join('/')
+                : '无';
+            
             console.log('检测到模型对象:', {
                 name: intersected.name,
                 type: intersected.type,
-                position: intersected.position
+                position: intersected.position,
+                groupPath: groupPath
             });
             
-            // 显示基础信息
-            infoPanel.innerHTML = `📍 ${intersected.name || '未知对象'}<br>类型: ${intersected.type}`;
+            // 仅显示最小模型组名称
+            const minimalGroupName = groupPath.length > 0
+                ? groupPath[groupPath.length - 1]
+                : '无';
+            infoPanel.innerHTML = `📍 ${minimalGroupName}`;
             infoPanel.style.visibility = 'visible';
             infoPanel.style.left = `${event.clientX + 10}px`;
             infoPanel.style.top = `${event.clientY - 20}px`;
@@ -233,10 +258,17 @@ export async function createScene(canvas) {
 
     animate();
 
+    // 清理函数
+    function cleanup() {
+        document.body.removeChild(infoPanel);
+        canvas.removeEventListener('mousemove', onDocumentMouseMove);
+    }
+
     return {
         scene,
         camera,
         renderer,
-        controls
+        controls,
+        cleanup
     };
 }
