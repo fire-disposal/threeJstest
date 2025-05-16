@@ -78,7 +78,6 @@ const devices = ref([
   { id: 9, name: '紧急按钮', online: true },
   { id: 10, name: '智能插座', online: true },
   { id: 11, name: '智能灯泡', online: false },
-  { id: 12, name: '空调控制器', online: true }
 ])
 
 const sceneCanvas = ref(null)
