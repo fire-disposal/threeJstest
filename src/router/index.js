@@ -35,6 +35,46 @@ const routes = [
     }
   },
   {
+    path: '/behavior',
+    name: 'behavior',
+    component: () => import('../views/BehaviorTracking.vue'),
+    meta: {
+      title: '行为轨迹',
+      icon: 'mdi-run-fast',
+      showInMenu: true
+    }
+  },
+  {
+    path: '/health',
+    name: 'health',
+    component: () => import('../views/HealthMonitoring.vue'),
+    meta: {
+      title: '生理指标',
+      icon: 'mdi-heart-pulse',
+      showInMenu: true
+    }
+  },
+  {
+    path: '/alerts',
+    name: 'alerts',
+    component: () => import('../views/AlertEvents.vue'),
+    meta: {
+      title: '异常预警',
+      icon: 'mdi-alert',
+      showInMenu: true
+    }
+  },
+  {
+    path: '/advice',
+    name: 'advice',
+    component: () => import('../views/CareAdvice.vue'),
+    meta: {
+      title: '照护建议',
+      icon: 'mdi-hand-heart',
+      showInMenu: true
+    }
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('../views/NotFound.vue'),

@@ -12,56 +12,6 @@ function createInfoObjects(scene) {
     return new Map();
 }
 
-// 创建老人模型
-function createElderlyPerson() {
-    const group = new THREE.Group();
-    
-    // 头部
-    const headGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-    const headMaterial = new THREE.MeshStandardMaterial({ color: 0xFFD700 });
-    const head = new THREE.Mesh(headGeometry, headMaterial);
-    head.position.y = 1.7;
-    group.add(head);
-    
-    // 身体
-    const bodyGeometry = new THREE.BoxGeometry(1, 1.5, 0.5);
-    const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x4682B4 });
-    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.position.y = 0.75;
-    group.add(body);
-    
-    // 四肢
-    const limbGeometry = new THREE.BoxGeometry(0.3, 0.8, 0.3);
-    const limbMaterial = new THREE.MeshStandardMaterial({ color: 0xFFD700 });
-    
-    // 左臂
-    const leftArm = new THREE.Mesh(limbGeometry, limbMaterial);
-    leftArm.position.set(-0.8, 1.1, 0);
-    leftArm.rotation.z = 0.3;
-    group.add(leftArm);
-    
-    // 右臂
-    const rightArm = new THREE.Mesh(limbGeometry, limbMaterial);
-    rightArm.position.set(0.8, 1.1, 0);
-    rightArm.rotation.z = -0.3;
-    group.add(rightArm);
-    
-    // 左腿
-    const leftLeg = new THREE.Mesh(limbGeometry, limbMaterial);
-    leftLeg.position.set(-0.3, -0.4, 0);
-    group.add(leftLeg);
-    
-    // 右腿
-    const rightLeg = new THREE.Mesh(limbGeometry, limbMaterial);
-    rightLeg.position.set(0.3, -0.4, 0);
-    group.add(rightLeg);
-    
-    group.position.set(0, 0, 0);
-    group.scale.set(0.8, 0.8, 0.8);
-    
-    return group;
-}
-
 
 export async function createScene(canvas) {
     // 初始化场景
@@ -72,12 +22,18 @@ export async function createScene(canvas) {
     const camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
     camera.position.set(0, 10, 20);
 
-    // 创建渲染器
+    // 创建渲染器 - 增强抗锯齿配置
     const renderer = new THREE.WebGLRenderer({
         canvas,
-        antialias: true
+        antialias: true,
+        powerPreference: "high-performance",
+        precision: "highp"
     });
+    renderer.setPixelRatio(window.devicePixelRatio || 1);
     renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
 
     // 创建效果合成器和高亮效果
     const composer = new EffectComposer(renderer);
@@ -96,36 +52,53 @@ export async function createScene(canvas) {
 
 
     // 添加环境光和方向光
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2); // 增强环境光
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); // 减弱环境光
     scene.add(ambientLight);
     
     // 添加顶部平面方向光
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); // 增强方向光
-    directionalLight.position.set(0, 15, 0); // 提高光源位置
-    directionalLight.castShadow = true; // 关闭阴影
-    directionalLight.shadow.mapSize.width = 2048; // 提高阴影质量
-    directionalLight.shadow.mapSize.height = 2048;
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2); // 增强方向光
+    directionalLight.position.set(0, 15, 0);
+    directionalLight.castShadow = false;
     scene.add(directionalLight);
     
     // 添加辅助光源
     const helperLight = new THREE.DirectionalLight(0xffffff, 0.5);
     helperLight.position.set(5, 5, 5);
     scene.add(helperLight);
+
+    // 添加半球光增强整体亮度
+    const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+    hemisphereLight.position.set(0, 20, 0);
+    scene.add(hemisphereLight);
     
     // 创建房屋和家具
     // 加载房屋gltf模型
     try {
         const houseModel = await new ModelLoader().loadModel('house');
+        _ChangeMaterialEmissive(houseModel);
+        houseModel.scale.set(1.5, 1.5, 1.5); // 放大模型1.5倍
         scene.add(houseModel);
+        
+        // 调整相机位置适应放大后的模型
+        camera.position.set(0, 15, 30);
+
+    // 修改模型材质增加自发光
+    function _ChangeMaterialEmissive(parent) {
+        parent.traverse(function (obj) {
+            if(obj instanceof THREE.Mesh){
+                obj.material.emissive = new THREE.Color(1,1,1);
+                obj.material.emissiveIntensity = 0.3; // 适度自发光强度
+                if(obj.material.map) {
+                    obj.material.emissiveMap = obj.material.map;
+                }
+            }
+        });
+    }
     } catch (error) {
         console.error('加载房屋模型失败:', error);
         console.log('请将house.glb模型文件放入public/models目录');
     }
     // 不再创建家具
-
-    // 添加老人模型
-    const elderlyPerson = createElderlyPerson();
-    scene.add(elderlyPerson);
 
     // 创建统一信息对象映射表
     const infoMap = createInfoObjects(scene);
@@ -207,23 +180,6 @@ export async function createScene(canvas) {
     // 添加事件监听
     canvas.addEventListener('mousemove', onDocumentMouseMove, false);
 
-    // 老人随机移动
-    function moveElderlyPerson() {
-        const time = Date.now() * 0.001;
-        elderlyPerson.position.x = Math.sin(time * 0.3) * 8;
-        elderlyPerson.position.z = Math.cos(time * 0.2) * 6;
-        
-        // 面向移动方向
-        elderlyPerson.rotation.y = Math.atan2(
-            Math.sin(time * 0.3),
-            Math.cos(time * 0.2)
-        ) + Math.PI;
-
-        // 模拟呼吸效果
-        const breath = Math.sin(time * 3) * 0.02;
-        elderlyPerson.scale.set(0.8 + breath, 0.8 + breath, 0.8 + breath);
-    }
-
     // 传感器脉动动画
     function animateSensors() {
         const time = Date.now() * 0.001;
@@ -242,7 +198,6 @@ export async function createScene(canvas) {
     // 动画循环
     function animate() {
         requestAnimationFrame(animate);
-        moveElderlyPerson();
         animateSensors();
         controls.update();
         composer.render();

@@ -1,7 +1,7 @@
 <template>
   <v-container>
     <v-row>
-      <v-col cols="12" md="7">
+      <v-col cols="8">
         <v-card>
           <v-card-title>数字孪生居家老年人监护系统</v-card-title>
           <v-card-text class="pa-0">
@@ -13,29 +13,49 @@
             <div v-if="error" class="error-message">
               {{ error }}
             </div>
-            <div v-if="loading" class="loading-message">
-              场景加载中...
-            </div>
+            <div v-if="loading" class="loading-message">场景加载中...</div>
           </v-card-text>
         </v-card>
       </v-col>
 
-      <v-col cols="12" md="5">
-        <v-card class="monitor-card">
-          <v-card-title class="text-h6">
-            <v-icon left>mdi-heart-pulse</v-icon>
-            心率监测
-          </v-card-title>
-          <div ref="heartChart" class="chart-container"></div>
-        </v-card>
+      <v-col cols="4">
+        <v-row>
+          <v-col cols="12">
+            <v-card class="monitor-card">
+              <v-card-title class="d-flex align-center">
+                <v-icon left>mdi-devices</v-icon>
+                设备状态监控
+              </v-card-title>
+              <v-card-text style="overflow-y: auto; max-height: 300px;">
+                <v-list density="compact">
+                  <v-list-item v-for="device in devices" :key="device.id">
+                    <template v-slot:prepend>
+                      <v-icon :color="device.online ? 'green' : 'red'" size="small">
+                        mdi-circle
+                      </v-icon>
+                    </template>
+                    <v-list-item-title>{{ device.name }}</v-list-item-title>
+                    <v-list-item-subtitle>
+                      {{ device.online ? "在线" : "离线" }}
+                    </v-list-item-subtitle>
+                  </v-list-item>
+                </v-list>
+              </v-card-text>
+            </v-card>
+          </v-col>
 
-        <v-card class="monitor-card mt-4">
-          <v-card-title class="text-h6">
-            <v-icon left>mdi-run</v-icon>
-            活动轨迹
-          </v-card-title>
-          <div ref="activityChart" class="chart-container"></div>
-        </v-card>
+          <v-col cols="12">
+            <v-card class="monitor-card">
+              <v-card-title class="d-flex align-center">
+                <v-icon left>mdi-chart-pie</v-icon>
+                活动状态分析
+              </v-card-title>
+              <v-card-text>
+                <div ref="pieChart" style="width: 100%; height: 300px;"></div>
+              </v-card-text>
+            </v-card>
+          </v-col>
+        </v-row>
       </v-col>
     </v-row>
   </v-container>
@@ -46,116 +66,117 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { createScene } from '../utils/sceneManager'
 import * as echarts from 'echarts'
 
+const devices = ref([
+  { id: 1, name: '卧室温湿度传感器', online: true },
+  { id: 2, name: '客厅人体传感器', online: true },
+  { id: 3, name: '厨房烟雾报警器', online: false },
+  { id: 4, name: '卫生间跌倒检测', online: true },
+  { id: 5, name: '智能床垫传感器', online: true },
+  { id: 6, name: '门窗磁传感器', online: true },
+  { id: 7, name: '燃气泄漏报警器', online: true },
+  { id: 8, name: '水浸传感器', online: false },
+  { id: 9, name: '紧急按钮', online: true },
+  { id: 10, name: '智能插座', online: true },
+  { id: 11, name: '智能灯泡', online: false },
+  { id: 12, name: '空调控制器', online: true }
+])
+
 const sceneCanvas = ref(null)
 const sceneInstance = ref(null)
 const loading = ref(true)
 const error = ref(null)
-const heartChart = ref(null)
-const activityChart = ref(null)
-let heartChartInstance, activityChartInstance
+const timelineChart = ref(null)
+const pieChart = ref(null)
+let timelineChartInstance
+let pieChartInstance
 
 function initCharts() {
-  // 心率图表
-  heartChartInstance = echarts.init(heartChart.value)
-  heartChartInstance.setOption({
-    backgroundColor: 'transparent',
-    tooltip: {
-      trigger: 'axis',
-      backgroundColor: 'rgba(255,255,255,0.9)',
-      borderColor: '#eee',
-      textStyle: { color: '#333' }
-    },
-    xAxis: {
-      type: 'category',
-      data: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
-      axisLine: { lineStyle: { color: '#666' } },
-      axisLabel: { color: '#666' }
-    },
-    yAxis: {
-      type: 'value',
-      name: '心率(bpm)',
-      axisLine: { lineStyle: { color: '#666' } },
-      axisLabel: { color: '#666' }
-    },
-    series: [{
-      name: '心率',
-      type: 'line',
-      smooth: true,
-      data: [72, 68, 75, 80, 78, 76],
-      lineStyle: { color: '#2196F3', width: 3 },
-      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-        { offset: 0, color: 'rgba(33, 150, 243, 0.3)' },
-        { offset: 1, color: 'rgba(33, 150, 243, 0.1)' }
-      ])}
-    }]
-  })
-
-  // 活动图表
-  activityChartInstance = echarts.init(activityChart.value)
-  activityChartInstance.setOption({
-    backgroundColor: 'transparent',
-    tooltip: {
-      trigger: 'axis',
-      backgroundColor: 'rgba(255,255,255,0.9)',
-      borderColor: '#eee',
-      textStyle: { color: '#333' }
-    },
-    xAxis: {
-      type: 'category',
-      data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
-      axisLine: { lineStyle: { color: '#666' } },
-      axisLabel: { color: '#666' }
-    },
-    yAxis: {
-      type: 'value',
-      name: '步数',
-      axisLine: { lineStyle: { color: '#666' } },
-      axisLabel: { color: '#666' }
-    },
-    series: [{
-      name: '步数',
-      type: 'bar',
-      data: [3200, 2800, 4500, 3800, 4200, 5200, 4800],
-      itemStyle: {
-        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: '#4CAF50' },
-          { offset: 1, color: '#8BC34A' }
-        ]),
-        borderRadius: [4, 4, 0, 0]
+  nextTick(() => {
+    // 初始化饼图
+    if (pieChart.value) {
+      pieChartInstance = echarts.init(pieChart.value)
+      const option = {
+        tooltip: {
+          trigger: 'item'
+        },
+        legend: {
+          top: '5%',
+          left: 'center'
+        },
+        series: [
+          {
+            name: '活动状态',
+            type: 'pie',
+            radius: ['40%', '70%'],
+            avoidLabelOverlap: false,
+            itemStyle: {
+              borderRadius: 10,
+              borderColor: '#fff',
+              borderWidth: 2
+            },
+            label: {
+              show: false,
+              position: 'center'
+            },
+            emphasis: {
+              label: {
+                show: true,
+                fontSize: '18',
+                fontWeight: 'bold'
+              }
+            },
+            labelLine: {
+              show: false
+            },
+            data: [
+              { value: 35, name: '站立' },
+              { value: 30, name: '久坐' },
+              { value: 25, name: '睡眠' },
+              { value: 10, name: '活动' }
+            ]
+          }
+        ]
       }
-    }]
+      pieChartInstance.setOption(option)
+    }
   })
 }
+
 
 function handleResize() {
-  heartChartInstance?.resize()
-  activityChartInstance?.resize()
+  timelineChartInstance?.resize()
 }
 
-onMounted(() => {
-  nextTick(() => {
-    if (!sceneCanvas.value) {
-      error.value = '错误：未找到Canvas元素'
-      loading.value = false
-      return
-    }
+onMounted(async () => {
+  await nextTick()
 
-    console.log('Canvas尺寸:',
-      sceneCanvas.value.clientWidth,
-      sceneCanvas.value.clientHeight
-    )
+  if (!sceneCanvas.value) {
+    error.value = '错误：未找到Canvas元素'
+    loading.value = false
+    return
+  }
 
-    try {
-      sceneInstance.value = createScene(sceneCanvas.value)
-      console.log('3D场景初始化成功')
-      error.value = null
-    } catch (err) {
-      console.error('场景初始化失败:', err)
-      error.value = `错误：${err.message}`
-    } finally {
-      loading.value = false
-    }
-  })
+  console.log('Canvas尺寸:',
+    sceneCanvas.value.clientWidth,
+    sceneCanvas.value.clientHeight
+  )
+
+  try {
+    console.log('开始初始化3D场景...')
+    sceneInstance.value = await Promise.resolve(createScene(sceneCanvas.value))
+    console.log('3D场景初始化成功')
+    error.value = null
+  } catch (err) {
+    console.error('场景初始化失败:', err)
+    error.value = `错误：${err.message}`
+    // 确保错误时也更新loading状态
+    loading.value = false
+    return
+  }
+
+  // 成功时更新loading状态
+  loading.value = false
+  console.log('场景加载完成，loading状态已更新')
 
   initCharts()
   window.addEventListener('resize', handleResize)
@@ -167,8 +188,8 @@ onUnmounted(() => {
     console.log('3D场景资源已清理')
   }
   window.removeEventListener('resize', handleResize)
-  heartChartInstance?.dispose()
-  activityChartInstance?.dispose()
+  timelineChartInstance?.dispose()
+  pieChartInstance?.dispose()
 })
 </script>
 
@@ -193,16 +214,10 @@ onUnmounted(() => {
   text-align: center;
 }
 
-.chart-container {
-  width: 100%;
-  height: 280px;
-  padding: 8px;
-}
-
 .monitor-card {
   background: white;
   transition: transform 0.3s;
-  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
 
 .monitor-card:hover {
